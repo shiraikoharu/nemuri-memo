@@ -44,6 +44,7 @@
 
       button,
       input,
+      select,
       textarea {
         max-width: 100%;
         font: inherit;
@@ -55,7 +56,8 @@
       }
 
       input[type="date"],
-      input[type="time"] {
+      input[type="time"],
+      select {
         min-height: 54px;
         appearance: none;
         -webkit-appearance: none;
@@ -80,13 +82,6 @@
 
       .header {
         padding: 10px 2px 18px;
-      }
-
-      .header p {
-        margin: 0 0 6px;
-        color: var(--muted);
-        font-size: 16px;
-        font-weight: 800;
       }
 
       h1,
@@ -137,6 +132,7 @@
       }
 
       input,
+      select,
       textarea {
         width: 100%;
         min-height: 52px;
@@ -146,6 +142,18 @@
         color: var(--ink);
         font-size: 19px;
         padding: 10px 12px;
+      }
+
+      select {
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+          linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+        background-position:
+          calc(100% - 20px) 50%,
+          calc(100% - 14px) 50%;
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+        padding-right: 36px;
       }
 
       .choices,
@@ -159,7 +167,8 @@
       .primary,
       .secondary,
       .filter,
-      .file-button {
+      .file-button,
+      .today-button {
         min-height: 52px;
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -184,11 +193,18 @@
       }
 
       .secondary,
-      .file-button {
+      .file-button,
+      .today-button {
         display: grid;
         place-items: center;
         padding: 0 12px;
         text-align: center;
+      }
+
+      .today-button {
+        min-height: 60px;
+        background: var(--accent);
+        font-size: 18px;
       }
 
       .file-button input {
@@ -226,10 +242,15 @@
       }
 
       .record-card {
+        scroll-margin-top: 14px;
         display: grid;
         gap: 12px;
         padding: 14px;
         background: rgba(255, 250, 241, 0.92);
+      }
+
+      .record-card.today {
+        outline: 3px solid rgba(86, 107, 98, 0.26);
       }
 
       .record-card.sleepless {
@@ -311,10 +332,12 @@
     <script>
       const STORAGE_KEYS = ["nemuriMemoRecords", "nemuri-memo-records", "sleepRecords", "records"];
       const STORAGE_KEY = STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null) || "nemuriMemoRecords";
+      const MEDICINE_OPTIONS = ["", "0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5以上"];
       const app = document.querySelector("#app");
+      const openedDate = today();
 
       let records = loadRecords();
-      let selectedDate = today();
+      let selectedDate = openedDate;
       let monthCursor = new Date();
       let filterMode = "all";
       let message = "";
@@ -363,6 +386,27 @@
         return choices.includes(value) ? value : "";
       }
 
+      function normalizeMedicine(value) {
+        const raw = text(value).trim();
+        if (!raw) return "";
+        if (raw === "5以上") return raw;
+        const match = raw.match(/[0-9]+(?:\.[0-9]+)?/);
+        if (!match) return raw;
+        const number = Number(match[0]);
+        if (!Number.isFinite(number)) return raw;
+        if (number >= 5) return raw.includes("以上") ? "5以上" : "5";
+        const rounded = Math.round(number * 2) / 2;
+        return String(rounded).replace(/\.0$/, "");
+      }
+
+      function medicineNumber(value) {
+        const normalized = normalizeMedicine(value);
+        if (normalized === "") return null;
+        if (normalized === "5以上") return 5;
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : null;
+      }
+
       function normalizeRecord(raw) {
         const fellAsleepTime = text(raw.fellAsleepTime || raw.fellAsleepAt || raw.sleepTime);
         const wakeTime = text(raw.wakeTime || raw.wokeUpAt);
@@ -382,7 +426,7 @@
           nightmare: raw.nightmare === true ? "あり" : raw.nightmare === false ? "なし" : oneOf(raw.nightmare, ["なし", "あり"]),
           riseStatus: oneOf(raw.riseStatus, ["すぐ起きられた", "起きられない"]),
           riseTime: text(raw.riseTime),
-          medicine: text(raw.medicine),
+          medicine: normalizeMedicine(raw.medicine),
           memo: text(raw.memo),
           updatedAt: text(raw.updatedAt) || new Date().toISOString()
         };
@@ -451,8 +495,10 @@
       }
 
       function minutesFromTime(value) {
+        if (!/^\d{2}:\d{2}$/.test(value)) return null;
         const [hours, minutes] = value.split(":").map(Number);
-        if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
         return hours * 60 + minutes;
       }
 
@@ -464,11 +510,25 @@
         return end >= start ? end - start : end + 24 * 60 - start;
       }
 
+      function averageSleepMinutes(record) {
+        if (!record) return null;
+        if (record.sleepStatus === "眠れない") return 0;
+        if (record.sleepStatus === "眠れた") return sleepMinutes(record);
+        return null;
+      }
+
       function sleepLabel(record) {
         if (!record || !record.sleepStatus) return "未記録";
         if (record.sleepStatus === "眠れない") return "眠れない";
         const minutes = sleepMinutes(record);
-        if (minutes === null) return "未記録";
+        if (minutes === null || !Number.isFinite(minutes)) return "未記録";
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return `${hours}時間${rest ? `${rest}分` : ""}`;
+      }
+
+      function minutesLabel(minutes) {
+        if (minutes === null || !Number.isFinite(minutes)) return "未記録";
         const hours = Math.floor(minutes / 60);
         const rest = minutes % 60;
         return `${hours}時間${rest ? `${rest}分` : ""}`;
@@ -500,8 +560,23 @@
         `;
       }
 
+      function medicineSelect(value) {
+        const normalized = normalizeMedicine(value);
+        const options = MEDICINE_OPTIONS.includes(normalized) ? MEDICINE_OPTIONS : [...MEDICINE_OPTIONS, normalized];
+        return `
+          <select data-field="medicine">
+            ${options.map((option) => `
+              <option value="${escapeHtml(option)}" ${normalized === option ? "selected" : ""}>
+                ${option === "" ? "未選択" : escapeHtml(option)}
+              </option>
+            `).join("")}
+          </select>
+        `;
+      }
+
       function renderForm(record) {
-        const sleepFields = record.sleepStatus === "眠れた" ? `
+        const showSleepDetails = record.sleepStatus !== "眠れない";
+        const sleepFields = showSleepDetails ? `
           ${field("眠れた時刻（だいたいで大丈夫）", `<input type="time" data-field="fellAsleepTime" value="${record.fellAsleepTime}">`)}
           ${field("起床時刻", `<input type="time" data-field="wakeTime" value="${record.wakeTime}">`)}
           ${field("途中覚醒", choices("nightWaking", ["なし", "あり"], record.nightWaking))}
@@ -514,7 +589,7 @@
           ${record.riseStatus === "起きられない" ? field("起き上がり時刻（余裕があれば）", `<input type="time" data-field="riseTime" value="${record.riseTime}">`) : ""}
           <div class="sleep-result">睡眠時間：${sleepLabel(record)}</div>
         ` : `
-          <div class="sleep-result">睡眠時間：${sleepLabel(record)}</div>
+          <div class="sleep-result">睡眠時間：眠れない</div>
         `;
 
         return `
@@ -523,8 +598,8 @@
             ${field("ベッドに入った時刻", `<input type="time" data-field="bedTime" value="${record.bedTime}">`)}
             ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
             ${sleepFields}
-            ${field("眠剤", `<input type="text" data-field="medicine" value="${escapeHtml(record.medicine)}" placeholder="例：2錠">`)}
-            ${field("メモ", `<textarea data-field="memo" rows="3" placeholder="短く残す">${escapeHtml(record.memo)}</textarea>`)}
+            ${field("眠剤", medicineSelect(record.medicine))}
+            ${field("メモ", `<textarea data-field="memo" rows="3">${escapeHtml(record.memo)}</textarea>`)}
             <button class="primary" data-action="finish">記録する</button>
             ${message ? `<p class="success">${message}</p>` : ""}
           </section>
@@ -548,30 +623,32 @@
 
       function renderSummary() {
         const all = recordsInMonth().map((item) => item.record).filter(Boolean);
-        const durations = all.map(sleepMinutes).filter((value) => value !== null);
-        const averageMinutes = durations.length
-          ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
-          : null;
-        const average = averageMinutes === null
-          ? "未記録"
-          : `${Math.floor(averageMinutes / 60)}時間${averageMinutes % 60 ? `${averageMinutes % 60}分` : ""}`;
+        const sleepDurations = all.map(averageSleepMinutes).filter((value) => value !== null && Number.isFinite(value));
+        const averageSleep = sleepDurations.length
+          ? minutesLabel(Math.round(sleepDurations.reduce((sum, value) => sum + value, 0) / sleepDurations.length))
+          : "未記録";
+        const medicineValues = all.map((record) => medicineNumber(record.medicine)).filter((value) => value !== null);
+        const averageMedicine = medicineValues.length
+          ? `${(medicineValues.reduce((sum, value) => sum + value, 0) / medicineValues.length).toFixed(1)}錠`
+          : "未記録";
 
         return `
           <section class="summary">
             <p>記録日数：${all.length}日/${monthDates(monthCursor).length}日　合計${all.length}回</p>
-            <p>平均睡眠時間：${average}</p>
-            <p>眠れない記録：${all.filter((record) => record.sleepStatus === "眠れない").length}件</p>
+            <p>平均睡眠時間：${averageSleep}</p>
+            <p>眠れない日：${all.filter((record) => record.sleepStatus === "眠れない").length}件</p>
             <p>途中覚醒あり：${all.filter((record) => record.nightWaking === "あり").length}件</p>
             <p>悪夢あり：${all.filter((record) => record.nightmare === "あり").length}件</p>
-            <p>眠剤記録あり：${all.filter((record) => record.medicine.trim()).length}件</p>
+            <p>平均眠剤錠数：${averageMedicine}</p>
           </section>
         `;
       }
 
       function renderCard(date, record) {
+        const todayClass = date === openedDate ? "today" : "";
         if (!record) {
           return `
-            <article class="record-card empty">
+            <article class="record-card empty ${todayClass}" id="card-${date}">
               <h3>${formatDate(date)}</h3>
               <p>未記録</p>
             </article>
@@ -580,12 +657,12 @@
 
         if (record.sleepStatus === "眠れない") {
           return `
-            <article class="record-card sleepless">
+            <article class="record-card sleepless ${todayClass}" id="card-${record.date}">
               <h3>${formatDate(record.date)}</h3>
               <dl>
                 ${record.bedTime ? `<div><dt>ベッド</dt><dd>${record.bedTime}</dd></div>` : ""}
                 <div><dt>睡眠</dt><dd>眠れない</dd></div>
-                ${record.medicine ? `<div><dt>眠剤</dt><dd>${escapeHtml(record.medicine)}</dd></div>` : ""}
+                ${record.medicine ? `<div><dt>眠剤</dt><dd>${escapeHtml(record.medicine)}錠</dd></div>` : ""}
               </dl>
               ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
             </article>
@@ -593,7 +670,7 @@
         }
 
         return `
-          <article class="record-card">
+          <article class="record-card ${todayClass}" id="card-${record.date}">
             <h3>${formatDate(record.date)}</h3>
             <div class="card-block">
               <h4>時刻</h4>
@@ -620,8 +697,7 @@
             <div class="card-block">
               <h4>まとめ</h4>
               <dl>
-                <div><dt>睡眠</dt><dd>${sleepLabel(record)}</dd></div>
-                <div><dt>眠剤</dt><dd>${record.medicine || "未記録"}</dd></div>
+                <div><dt>眠剤</dt><dd>${record.medicine ? `${escapeHtml(record.medicine)}錠` : "未記録"}</dd></div>
               </dl>
             </div>
             ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
@@ -650,7 +726,6 @@
         app.innerHTML = `
           <main class="app-shell">
             <header class="header">
-              <p>30秒で記録できます</p>
               <h1>ねむりメモ</h1>
             </header>
             ${renderForm(record)}
@@ -660,6 +735,7 @@
                 <h2>${monthCursor.getFullYear()}年${monthCursor.getMonth() + 1}月</h2>
                 <button class="secondary" data-action="nextMonth">次の月</button>
               </div>
+              <button class="today-button" data-action="today">今日へ</button>
               ${renderSummary()}
               <div class="filters">
                 <button class="filter ${filterMode === "all" ? "active" : ""}" data-filter="all">すべて</button>
@@ -697,10 +773,43 @@
         render();
       }
 
+      function scrollToDate(date) {
+        requestAnimationFrame(() => {
+          const card = document.getElementById(`card-${date}`);
+          if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+
       app.addEventListener("input", (event) => {
         const fieldName = event.target.dataset.field;
         if (!fieldName) return;
         updateField(fieldName, event.target.value);
+      });
+
+      app.addEventListener("change", (event) => {
+        if (event.target.dataset.field) {
+          updateField(event.target.dataset.field, event.target.value);
+          return;
+        }
+
+        if (event.target.dataset.action !== "import") return;
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result));
+            const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
+            records = source.map(normalizeRecord);
+            saveRecords();
+            message = "記録できました";
+            render();
+          } catch {
+            alert("JSONを読み込めませんでした");
+          }
+        };
+        reader.readAsText(file);
       });
 
       app.addEventListener("click", (event) => {
@@ -732,6 +841,14 @@
           render();
         }
 
+        if (action === "today") {
+          const date = new Date(`${openedDate}T00:00:00`);
+          monthCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+          filterMode = "all";
+          render();
+          scrollToDate(openedDate);
+        }
+
         if (action === "export") {
           const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
@@ -741,27 +858,6 @@
           link.click();
           URL.revokeObjectURL(url);
         }
-      });
-
-      app.addEventListener("change", (event) => {
-        if (event.target.dataset.action !== "import") return;
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const parsed = JSON.parse(String(reader.result));
-            const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
-            records = source.map(normalizeRecord);
-            saveRecords();
-            message = "記録できました";
-            render();
-          } catch {
-            alert("JSONを読み込めませんでした");
-          }
-        };
-        reader.readAsText(file);
       });
 
       render();
