@@ -17,9 +17,10 @@
         --ink: #2e302b;
         --muted: #76766d;
         --line: #ded8ca;
-        --primary: #566b62;
+        --primary: #9b746b;
+        --primary-dark: #8f6f68;
         --primary-ink: #ffffff;
-        --accent: #d9e6df;
+        --accent: #ead7d1;
         --warm: #f7d9c9;
         --shadow: 0 12px 30px rgba(48, 44, 36, 0.08);
       }
@@ -76,7 +77,7 @@
         margin: 0 auto;
         padding: calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
         background:
-          radial-gradient(circle at 20% 0%, rgba(247, 217, 201, 0.55), transparent 32%),
+          radial-gradient(circle at 18% 0%, rgba(247, 217, 201, 0.58), transparent 34%),
           linear-gradient(180deg, #f4efe6 0%, #edf3ec 100%);
       }
 
@@ -87,7 +88,6 @@
       h1,
       h2,
       h3,
-      h4,
       p {
         margin: 0;
         letter-spacing: 0;
@@ -108,7 +108,7 @@
       .record-card {
         border: 1px solid rgba(111, 105, 92, 0.12);
         border-radius: 8px;
-        background: rgba(255, 250, 241, 0.88);
+        background: rgba(255, 250, 241, 0.9);
         box-shadow: var(--shadow);
       }
 
@@ -168,7 +168,8 @@
       .secondary,
       .filter,
       .file-button,
-      .today-button {
+      .today-button,
+      .card-action {
         min-height: 52px;
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -194,7 +195,8 @@
 
       .secondary,
       .file-button,
-      .today-button {
+      .today-button,
+      .card-action {
         display: grid;
         place-items: center;
         padding: 0 12px;
@@ -205,6 +207,10 @@
         min-height: 60px;
         background: var(--accent);
         font-size: 18px;
+      }
+
+      .danger {
+        color: #8a5a58;
       }
 
       .file-button input {
@@ -250,7 +256,7 @@
       }
 
       .record-card.today {
-        outline: 3px solid rgba(86, 107, 98, 0.26);
+        outline: 3px solid rgba(155, 116, 107, 0.26);
       }
 
       .record-card.sleepless {
@@ -262,23 +268,24 @@
         color: var(--muted);
       }
 
-      .record-card h3 {
+      .record-head {
+        display: grid;
+        gap: 10px;
+      }
+
+      .record-head h3 {
         font-size: 22px;
       }
 
-      .card-block {
+      .card-actions {
         display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-      }
-
-      .card-block h4 {
-        color: var(--muted);
-        font-size: 14px;
       }
 
       dl {
         display: grid;
-        gap: 6px;
+        gap: 7px;
         margin: 0;
       }
 
@@ -343,8 +350,29 @@
       let message = "";
 
       if ("serviceWorker" in navigator) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js").catch(() => {});
+          navigator.serviceWorker.register("./sw.js?v=3").then((registration) => {
+            registration.update();
+            if (registration.waiting) {
+              registration.waiting.postMessage({ type: "SKIP_WAITING" });
+            }
+            registration.addEventListener("updatefound", () => {
+              const worker = registration.installing;
+              if (!worker) return;
+              worker.addEventListener("statechange", () => {
+                if (worker.state === "installed" && navigator.serviceWorker.controller) {
+                  worker.postMessage({ type: "SKIP_WAITING" });
+                }
+              });
+            });
+          }).catch(() => {});
         });
       }
 
@@ -478,6 +506,11 @@
         saveRecords();
       }
 
+      function deleteRecord(date) {
+        records = records.filter((record) => record.date !== date);
+        saveRecords();
+      }
+
       function monthDates(date) {
         const year = date.getFullYear();
         const month = date.getMonth();
@@ -548,6 +581,11 @@
         return `<section class="field"><h3>${label}</h3>${body}</section>`;
       }
 
+      function row(label, value) {
+        if (value === undefined || value === null || value === "") return "";
+        return `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+      }
+
       function choices(fieldName, values, selected) {
         return `
           <div class="choices">
@@ -580,20 +618,13 @@
           ${field("眠れた時刻（だいたいで大丈夫）", `<input type="time" data-field="fellAsleepTime" value="${record.fellAsleepTime}">`)}
           ${field("起床時刻", `<input type="time" data-field="wakeTime" value="${record.wakeTime}">`)}
           ${field("途中覚醒", choices("nightWaking", ["なし", "あり"], record.nightWaking))}
-          ${record.nightWaking === "あり" ? `
-            ${field("途中覚醒回数", choices("wakeCount", ["1回", "複数回"], record.wakeCount))}
-            ${field("再入眠", choices("returnSleep", ["できた", "できない", "両方"], record.returnSleep))}
-          ` : ""}
           ${field("悪夢", choices("nightmare", ["なし", "あり"], record.nightmare))}
           ${field("起き上がり", choices("riseStatus", ["すぐ起きられた", "起きられない"], record.riseStatus))}
-          ${record.riseStatus === "起きられない" ? field("起き上がり時刻（余裕があれば）", `<input type="time" data-field="riseTime" value="${record.riseTime}">`) : ""}
           <div class="sleep-result">睡眠時間：${sleepLabel(record)}</div>
-        ` : `
-          <div class="sleep-result">睡眠時間：眠れない</div>
-        `;
+        ` : "";
 
         return `
-          <section class="panel form-panel">
+          <section class="panel form-panel" id="form-panel">
             ${field("日付", `<input type="date" data-field="date" value="${record.date}">`)}
             ${field("ベッドに入った時刻", `<input type="time" data-field="bedTime" value="${record.bedTime}">`)}
             ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
@@ -649,58 +680,36 @@
         if (!record) {
           return `
             <article class="record-card empty ${todayClass}" id="card-${date}">
-              <h3>${formatDate(date)}</h3>
+              <div class="record-head">
+                <h3>${formatDate(date)}</h3>
+              </div>
               <p>未記録</p>
             </article>
           `;
         }
 
-        if (record.sleepStatus === "眠れない") {
-          return `
-            <article class="record-card sleepless ${todayClass}" id="card-${record.date}">
-              <h3>${formatDate(record.date)}</h3>
-              <dl>
-                ${record.bedTime ? `<div><dt>ベッド</dt><dd>${record.bedTime}</dd></div>` : ""}
-                <div><dt>睡眠</dt><dd>眠れない</dd></div>
-                ${record.medicine ? `<div><dt>眠剤</dt><dd>${escapeHtml(record.medicine)}錠</dd></div>` : ""}
-              </dl>
-              ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
-            </article>
-          `;
-        }
+        const rows = [
+          row("ベッド", record.bedTime),
+          row("睡眠", record.sleepStatus),
+          record.sleepStatus === "眠れた" ? row("入眠", record.fellAsleepTime) : "",
+          record.sleepStatus === "眠れた" ? row("起床", record.wakeTime) : "",
+          record.sleepStatus === "眠れた" ? row("途中覚醒", record.nightWaking) : "",
+          record.sleepStatus === "眠れた" ? row("悪夢", record.nightmare) : "",
+          record.sleepStatus === "眠れた" ? row("起き上がり", record.riseStatus) : "",
+          row("眠剤", record.medicine ? `${record.medicine}錠` : ""),
+          record.memo ? `<div><dt>メモ</dt><dd>${escapeHtml(record.memo)}</dd></div>` : ""
+        ].filter(Boolean).join("");
 
         return `
-          <article class="record-card ${todayClass}" id="card-${record.date}">
-            <h3>${formatDate(record.date)}</h3>
-            <div class="card-block">
-              <h4>時刻</h4>
-              <dl>
-                ${record.bedTime ? `<div><dt>ベッド</dt><dd>${record.bedTime}</dd></div>` : ""}
-                <div><dt>睡眠</dt><dd>${record.sleepStatus || "未記録"}</dd></div>
-                ${record.sleepStatus === "眠れた" && record.fellAsleepTime ? `<div><dt>入眠</dt><dd>${record.fellAsleepTime}</dd></div>` : ""}
-                ${record.sleepStatus === "眠れた" && record.wakeTime ? `<div><dt>起床</dt><dd>${record.wakeTime}</dd></div>` : ""}
-                ${record.riseTime ? `<div><dt>起き上がり時刻</dt><dd>${record.riseTime}</dd></div>` : ""}
-              </dl>
-            </div>
-            ${record.sleepStatus === "眠れた" ? `
-              <div class="card-block">
-                <h4>状態</h4>
-                <dl>
-                  <div><dt>覚醒</dt><dd>${record.nightWaking || "未記録"}</dd></div>
-                  <div><dt>回数</dt><dd>${record.nightWaking === "あり" ? record.wakeCount || "未記録" : "未記録"}</dd></div>
-                  <div><dt>再入眠</dt><dd>${record.nightWaking === "あり" ? record.returnSleep || "未記録" : "未記録"}</dd></div>
-                  <div><dt>悪夢</dt><dd>${record.nightmare || "未記録"}</dd></div>
-                  <div><dt>起き上がり</dt><dd>${record.riseStatus || "未記録"}</dd></div>
-                </dl>
+          <article class="record-card ${record.sleepStatus === "眠れない" ? "sleepless" : ""} ${todayClass}" id="card-${record.date}">
+            <div class="record-head">
+              <h3>${formatDate(record.date)}</h3>
+              <div class="card-actions">
+                <button class="card-action" data-action="edit" data-date="${record.date}">編集</button>
+                <button class="card-action danger" data-action="delete" data-date="${record.date}">削除</button>
               </div>
-            ` : ""}
-            <div class="card-block">
-              <h4>まとめ</h4>
-              <dl>
-                <div><dt>眠剤</dt><dd>${record.medicine ? `${escapeHtml(record.medicine)}錠` : "未記録"}</dd></div>
-              </dl>
             </div>
-            ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
+            <dl>${rows}</dl>
           </article>
         `;
       }
@@ -761,10 +770,6 @@
 
         if (fieldName === "sleepStatus" && value === "眠れない") {
           upsertRecord(clearSleepDetails({ ...next, sleepStatus: "眠れない" }));
-        } else if (fieldName === "nightWaking" && value === "なし") {
-          upsertRecord({ ...next, nightWaking: "なし", wakeCount: "", returnSleep: "" });
-        } else if (fieldName === "riseStatus" && value === "すぐ起きられた") {
-          upsertRecord({ ...next, riseStatus: "すぐ起きられた", riseTime: "" });
         } else {
           upsertRecord(next);
         }
@@ -777,6 +782,13 @@
         requestAnimationFrame(() => {
           const card = document.getElementById(`card-${date}`);
           if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+
+      function scrollToForm() {
+        requestAnimationFrame(() => {
+          const form = document.getElementById("form-panel");
+          if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       }
 
@@ -818,6 +830,7 @@
         const value = target.dataset.value;
         const action = target.dataset.action;
         const filter = target.dataset.filter;
+        const date = target.dataset.date;
 
         if (fieldName && value !== undefined) updateField(fieldName, value);
 
@@ -842,11 +855,29 @@
         }
 
         if (action === "today") {
-          const date = new Date(`${openedDate}T00:00:00`);
-          monthCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+          const todayDate = new Date(`${openedDate}T00:00:00`);
+          monthCursor = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
           filterMode = "all";
           render();
           scrollToDate(openedDate);
+        }
+
+        if (action === "edit" && date) {
+          selectedDate = date;
+          const editDate = new Date(`${date}T00:00:00`);
+          monthCursor = new Date(editDate.getFullYear(), editDate.getMonth(), 1);
+          message = "";
+          render();
+          scrollToForm();
+        }
+
+        if (action === "delete" && date) {
+          const ok = confirm(`${formatDate(date)}の記録を削除しますか？`);
+          if (!ok) return;
+          deleteRecord(date);
+          if (selectedDate === date) selectedDate = openedDate;
+          message = "";
+          render();
         }
 
         if (action === "export") {
