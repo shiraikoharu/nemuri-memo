@@ -85,6 +85,7 @@
 
       .header {
         padding: 10px 2px 18px;
+        text-align: center;
       }
 
       h1,
@@ -163,6 +164,31 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+      }
+
+      .filter-panel {
+        position: relative;
+        display: grid;
+        gap: 8px;
+      }
+
+      .filter-toggle {
+        width: 100%;
+        min-height: 54px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 253, 249, 0.8);
+        color: var(--primary-dark);
+        font-weight: 800;
+      }
+
+      .filter-menu {
+        display: grid;
+        gap: 8px;
+        border: 1px solid rgba(184, 132, 139, 0.16);
+        border-radius: 8px;
+        background: rgba(255, 253, 249, 0.94);
+        padding: 8px;
       }
 
       .choice,
@@ -361,6 +387,7 @@
       let selectedDate = openedDate;
       let monthCursor = new Date();
       let filterMode = "all";
+      let filterOpen = false;
       let message = "";
 
       if ("serviceWorker" in navigator) {
@@ -748,6 +775,37 @@
         return filteredCards().map(({ date, record }) => renderCard(date, record)).join("");
       }
 
+      function filterLabel(mode) {
+        return {
+          all: "すべて",
+          sleepless: "眠れないだけ",
+          nightmare: "悪夢ありだけ",
+          waking: "途中覚醒ありだけ"
+        }[mode] || "すべて";
+      }
+
+      function renderFilters() {
+        const options = [
+          ["all", "すべて"],
+          ["sleepless", "眠れないだけ"],
+          ["nightmare", "悪夢ありだけ"],
+          ["waking", "途中覚醒ありだけ"]
+        ];
+
+        return `
+          <div class="filter-panel">
+            <button class="filter-toggle" data-action="toggleFilter">${filterLabel(filterMode)} ▼</button>
+            ${filterOpen ? `
+              <div class="filter-menu">
+                ${options.map(([mode, label]) => `
+                  <button class="filter ${filterMode === mode ? "active" : ""}" data-filter="${mode}">${label}</button>
+                `).join("")}
+              </div>
+            ` : ""}
+          </div>
+        `;
+      }
+
       function renderBackup() {
         return `
           <section class="panel backup-panel">
@@ -775,14 +833,9 @@
                 <h2>${monthCursor.getFullYear()}年${monthCursor.getMonth() + 1}月</h2>
                 <button class="secondary" data-action="nextMonth">次の月</button>
               </div>
-              <button class="today-button" data-action="today">今日へ</button>
+              <button class="today-button" data-action="today">今日へ移動</button>
               ${renderSummary()}
-              <div class="filters">
-                <button class="filter ${filterMode === "all" ? "active" : ""}" data-filter="all">すべて</button>
-                <button class="filter ${filterMode === "sleepless" ? "active" : ""}" data-filter="sleepless">眠れないだけ</button>
-                <button class="filter ${filterMode === "nightmare" ? "active" : ""}" data-filter="nightmare">悪夢ありだけ</button>
-                <button class="filter ${filterMode === "waking" ? "active" : ""}" data-filter="waking">途中覚醒ありだけ</button>
-              </div>
+              ${renderFilters()}
               <div class="cards">${renderCards()}</div>
             </section>
           </main>
@@ -866,6 +919,12 @@
 
         if (filter) {
           filterMode = filter;
+          filterOpen = false;
+          render();
+        }
+
+        if (action === "toggleFilter") {
+          filterOpen = !filterOpen;
           render();
         }
 
