@@ -11,20 +11,20 @@
     <title>ねむりメモ</title>
     <style>
       :root {
-        --bg: #fbf3f1;
-        --surface: #fffdf9;
-        --surface-soft: #f8eeeb;
+        --bg: #fff7f8;
+        --surface: #fffefd;
+        --surface-soft: #fffafc;
         --ink: #3a3130;
         --muted: #82716f;
-        --line: #eadbd7;
-        --primary: #b8848b;
-        --primary-dark: #936a72;
+        --line: #f0dde2;
+        --primary: #c69aa2;
+        --primary-dark: #9f747d;
         --primary-ink: #ffffff;
-        --accent: #f2dce0;
-        --accent-soft: #f8ecef;
-        --warm: #f6d8dc;
-        --sleepless: #f7ebe8;
-        --shadow: 0 12px 30px rgba(96, 68, 70, 0.07);
+        --accent: #f7dfe5;
+        --accent-soft: #f8e7ea;
+        --warm: #f8e0e6;
+        --sleepless: #fff1f3;
+        --shadow: 0 12px 30px rgba(137, 97, 106, 0.07);
       }
 
       * {
@@ -79,8 +79,8 @@
         margin: 0 auto;
         padding: calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
         background:
-          radial-gradient(circle at 18% 0%, rgba(246, 216, 220, 0.74), transparent 34%),
-          linear-gradient(180deg, #fbf3f1 0%, #f8eeeb 52%, #f6f0ea 100%);
+          radial-gradient(circle at 18% 0%, rgba(248, 224, 230, 0.78), transparent 34%),
+          linear-gradient(180deg, #fff7f8 0%, #fbf3f1 52%, #fffaf6 100%);
       }
 
       .header {
@@ -109,7 +109,7 @@
       .panel,
       .field,
       .record-card {
-        border: 1px solid rgba(111, 105, 92, 0.12);
+        border: 1px solid rgba(159, 116, 125, 0.13);
         border-radius: 8px;
         background: rgba(255, 253, 249, 0.92);
         box-shadow: var(--shadow);
@@ -177,7 +177,7 @@
         min-height: 54px;
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: rgba(255, 253, 249, 0.8);
+        background: rgba(255, 254, 253, 0.86);
         color: var(--primary-dark);
         font-weight: 800;
       }
@@ -185,9 +185,9 @@
       .filter-menu {
         display: grid;
         gap: 8px;
-        border: 1px solid rgba(184, 132, 139, 0.16);
+        border: 1px solid rgba(198, 154, 162, 0.2);
         border-radius: 8px;
-        background: rgba(255, 253, 249, 0.94);
+        background: rgba(255, 254, 253, 0.96);
         padding: 8px;
       }
 
@@ -265,7 +265,7 @@
         display: grid;
         gap: 8px;
         border-radius: 8px;
-        background: rgba(248, 236, 239, 0.9);
+        background: rgba(248, 231, 234, 0.86);
         padding: 12px;
         font-weight: 700;
       }
@@ -284,7 +284,7 @@
       }
 
       .record-card.today {
-        outline: 3px solid rgba(184, 132, 139, 0.24);
+        outline: 3px solid rgba(198, 154, 162, 0.28);
       }
 
       .record-card.sleepless {
@@ -292,7 +292,7 @@
       }
 
       .record-card.empty {
-        background: rgba(255, 253, 249, 0.64);
+        background: rgba(255, 250, 252, 0.72);
         color: var(--muted);
       }
 
@@ -315,8 +315,8 @@
         width: auto;
         min-height: 36px;
         padding: 0 14px;
-        border-color: rgba(184, 132, 139, 0.24);
-        background: rgba(255, 253, 249, 0.78);
+        border-color: rgba(198, 154, 162, 0.24);
+        background: rgba(255, 250, 252, 0.82);
         color: var(--primary-dark);
         font-size: 14px;
       }
