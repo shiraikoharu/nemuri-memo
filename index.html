@@ -11,18 +11,20 @@
     <title>ねむりメモ</title>
     <style>
       :root {
-        --bg: #f4efe6;
-        --surface: #fffaf1;
-        --surface-soft: #edf3ec;
-        --ink: #2e302b;
-        --muted: #76766d;
-        --line: #ded8ca;
-        --primary: #9b746b;
-        --primary-dark: #8f6f68;
+        --bg: #fbf3f1;
+        --surface: #fffdf9;
+        --surface-soft: #f8eeeb;
+        --ink: #3a3130;
+        --muted: #82716f;
+        --line: #eadbd7;
+        --primary: #b8848b;
+        --primary-dark: #936a72;
         --primary-ink: #ffffff;
-        --accent: #ead7d1;
-        --warm: #f7d9c9;
-        --shadow: 0 12px 30px rgba(48, 44, 36, 0.08);
+        --accent: #f2dce0;
+        --accent-soft: #f8ecef;
+        --warm: #f6d8dc;
+        --sleepless: #f7ebe8;
+        --shadow: 0 12px 30px rgba(96, 68, 70, 0.07);
       }
 
       * {
@@ -77,8 +79,8 @@
         margin: 0 auto;
         padding: calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
         background:
-          radial-gradient(circle at 18% 0%, rgba(247, 217, 201, 0.58), transparent 34%),
-          linear-gradient(180deg, #f4efe6 0%, #edf3ec 100%);
+          radial-gradient(circle at 18% 0%, rgba(246, 216, 220, 0.74), transparent 34%),
+          linear-gradient(180deg, #fbf3f1 0%, #f8eeeb 52%, #f6f0ea 100%);
       }
 
       .header {
@@ -108,7 +110,7 @@
       .record-card {
         border: 1px solid rgba(111, 105, 92, 0.12);
         border-radius: 8px;
-        background: rgba(255, 250, 241, 0.9);
+        background: rgba(255, 253, 249, 0.92);
         box-shadow: var(--shadow);
       }
 
@@ -205,7 +207,7 @@
 
       .today-button {
         min-height: 60px;
-        background: var(--accent);
+        background: var(--accent-soft);
         font-size: 18px;
       }
 
@@ -237,7 +239,7 @@
         display: grid;
         gap: 8px;
         border-radius: 8px;
-        background: rgba(237, 243, 236, 0.88);
+        background: rgba(248, 236, 239, 0.9);
         padding: 12px;
         font-weight: 700;
       }
@@ -252,19 +254,19 @@
         display: grid;
         gap: 14px;
         padding: 14px;
-        background: rgba(255, 250, 241, 0.92);
+        background: rgba(255, 253, 249, 0.94);
       }
 
       .record-card.today {
-        outline: 3px solid rgba(155, 116, 107, 0.26);
+        outline: 3px solid rgba(184, 132, 139, 0.24);
       }
 
       .record-card.sleepless {
-        background: #f3e6c8;
+        background: var(--sleepless);
       }
 
       .record-card.empty {
-        background: rgba(255, 250, 241, 0.58);
+        background: rgba(255, 253, 249, 0.64);
         color: var(--muted);
       }
 
@@ -287,8 +289,8 @@
         width: auto;
         min-height: 36px;
         padding: 0 14px;
-        border-color: rgba(155, 116, 107, 0.22);
-        background: rgba(255, 250, 241, 0.66);
+        border-color: rgba(184, 132, 139, 0.24);
+        background: rgba(255, 253, 249, 0.78);
         color: var(--primary-dark);
         font-size: 14px;
       }
