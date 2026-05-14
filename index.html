@@ -708,11 +708,13 @@
         }
 
         const isSleepless = record.sleepStatus === "眠れない";
-        const flowRows = [
+        const flowRows = isSleepless ? [
           row("ベッド", record.bedTime),
-          isSleepless ? row("睡眠", "眠れない") : "",
-          !isSleepless ? row("入眠", record.fellAsleepTime) : "",
-          !isSleepless ? row("起床", record.wakeTime) : ""
+          "<div><dt>睡眠</dt><dd>眠れない</dd></div>"
+        ] : [
+          row("ベッド", record.bedTime),
+          row("入眠", record.fellAsleepTime),
+          row("起床", record.wakeTime)
         ];
         const stateRows = isSleepless ? [] : [
           row("途中覚醒", record.nightWaking),
