@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4efe6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ねむりメモ" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="./manifest.json" />
+    <title>ねむりメモ</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --surface: #fffaf1;
+        --surface-soft: #edf3ec;
+        --ink: #2e302b;
+        --muted: #76766d;
+        --line: #ded8ca;
+        --primary: #566b62;
+        --primary-ink: #ffffff;
+        --accent: #d9e6df;
+        --warm: #f7d9c9;
+        --shadow: 0 12px 30px rgba(48, 44, 36, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        overflow-x: hidden;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      textarea {
+        max-width: 100%;
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      input[type="date"],
+      input[type="time"] {
+        min-height: 54px;
+        appearance: none;
+        -webkit-appearance: none;
+        border-radius: 8px;
+        line-height: normal;
+      }
+
+      textarea {
+        resize: vertical;
+      }
+
+      .app-shell {
+        width: 100%;
+        max-width: 520px;
+        min-height: 100dvh;
+        margin: 0 auto;
+        padding: calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+        background:
+          radial-gradient(circle at 20% 0%, rgba(247, 217, 201, 0.55), transparent 32%),
+          linear-gradient(180deg, #f4efe6 0%, #edf3ec 100%);
+      }
+
+      .header {
+        padding: 10px 2px 18px;
+      }
+
+      .header p {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: 34px;
+        line-height: 1.2;
+      }
+
+      h2 {
+        font-size: 20px;
+        text-align: center;
+      }
+
+      .panel,
+      .field,
+      .record-card {
+        border: 1px solid rgba(111, 105, 92, 0.12);
+        border-radius: 8px;
+        background: rgba(255, 250, 241, 0.88);
+        box-shadow: var(--shadow);
+      }
+
+      .panel {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+
+      .field {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        box-shadow: none;
+      }
+
+      .field h3 {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        min-height: 52px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--ink);
+        font-size: 19px;
+        padding: 10px 12px;
+      }
+
+      .choices,
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .choice,
+      .primary,
+      .secondary,
+      .filter,
+      .file-button {
+        min-height: 52px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .choice.active,
+      .filter.active {
+        border-color: transparent;
+        background: var(--primary);
+        color: var(--primary-ink);
+      }
+
+      .primary {
+        min-height: 64px;
+        border: 0;
+        background: var(--primary);
+        color: var(--primary-ink);
+        font-size: 20px;
+      }
+
+      .secondary,
+      .file-button {
+        display: grid;
+        place-items: center;
+        padding: 0 12px;
+        text-align: center;
+      }
+
+      .file-button input {
+        display: none;
+      }
+
+      .success,
+      .sleep-result {
+        border-radius: 8px;
+        background: var(--accent);
+        padding: 12px;
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .month-head {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .summary {
+        display: grid;
+        gap: 8px;
+        border-radius: 8px;
+        background: rgba(237, 243, 236, 0.88);
+        padding: 12px;
+        font-weight: 700;
+      }
+
+      .cards {
+        display: grid;
+        gap: 12px;
+      }
+
+      .record-card {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        background: rgba(255, 250, 241, 0.92);
+      }
+
+      .record-card.sleepless {
+        background: #f3e6c8;
+      }
+
+      .record-card.empty {
+        background: rgba(255, 250, 241, 0.58);
+        color: var(--muted);
+      }
+
+      .record-card h3 {
+        font-size: 22px;
+      }
+
+      .card-block {
+        display: grid;
+        gap: 8px;
+      }
+
+      .card-block h4 {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      dl {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+      }
+
+      dl div {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: 8px;
+        align-items: baseline;
+      }
+
+      dt {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      dd {
+        min-width: 0;
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .memo {
+        border-left: 4px solid var(--warm);
+        padding-left: 10px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 380px) {
+        .app-shell {
+          padding-inline: 10px;
+        }
+
+        .choices,
+        .filters,
+        .month-head {
+          grid-template-columns: 1fr;
+        }
+
+        dl div {
+          grid-template-columns: 88px minmax(0, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const STORAGE_KEYS = ["nemuriMemoRecords", "nemuri-memo-records", "sleepRecords", "records"];
+      const STORAGE_KEY = STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null) || "nemuriMemoRecords";
+      const app = document.querySelector("#app");
+
+      let records = loadRecords();
+      let selectedDate = today();
+      let monthCursor = new Date();
+      let filterMode = "all";
+      let message = "";
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js").catch(() => {});
+        });
+      }
+
+      function today() {
+        const date = new Date();
+        date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+        return date.toISOString().slice(0, 10);
+      }
+
+      function uid() {
+        return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      }
+
+      function emptyRecord(date = today()) {
+        return {
+          id: uid(),
+          date,
+          bedTime: "",
+          sleepStatus: "",
+          fellAsleepTime: "",
+          wakeTime: "",
+          nightWaking: "",
+          wakeCount: "",
+          returnSleep: "",
+          nightmare: "",
+          riseStatus: "",
+          riseTime: "",
+          medicine: "",
+          memo: "",
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      function text(value) {
+        return typeof value === "string" ? value : "";
+      }
+
+      function oneOf(value, choices) {
+        return choices.includes(value) ? value : "";
+      }
+
+      function normalizeRecord(raw) {
+        const fellAsleepTime = text(raw.fellAsleepTime || raw.fellAsleepAt || raw.sleepTime);
+        const wakeTime = text(raw.wakeTime || raw.wokeUpAt);
+        const inferredStatus = fellAsleepTime || wakeTime ? "眠れた" : "";
+        const sleepStatus = oneOf(raw.sleepStatus, ["眠れた", "眠れない"]) || inferredStatus;
+
+        const record = {
+          ...emptyRecord(text(raw.date || raw.record_date) || today()),
+          id: text(raw.id) || uid(),
+          bedTime: text(raw.bedTime || raw.wentToBedAt || raw.went_to_bed_at),
+          sleepStatus,
+          fellAsleepTime,
+          wakeTime,
+          nightWaking: raw.nightWaking === true ? "あり" : raw.nightWaking === false ? "なし" : oneOf(raw.nightWaking, ["なし", "あり"]),
+          wakeCount: oneOf(raw.wakeCount, ["1回", "複数回"]),
+          returnSleep: oneOf(raw.returnSleep, ["できた", "できない", "両方"]),
+          nightmare: raw.nightmare === true ? "あり" : raw.nightmare === false ? "なし" : oneOf(raw.nightmare, ["なし", "あり"]),
+          riseStatus: oneOf(raw.riseStatus, ["すぐ起きられた", "起きられない"]),
+          riseTime: text(raw.riseTime),
+          medicine: text(raw.medicine),
+          memo: text(raw.memo),
+          updatedAt: text(raw.updatedAt) || new Date().toISOString()
+        };
+
+        return record.sleepStatus === "眠れない" ? clearSleepDetails(record) : record;
+      }
+
+      function clearSleepDetails(record) {
+        return {
+          ...record,
+          fellAsleepTime: "",
+          wakeTime: "",
+          nightWaking: "",
+          wakeCount: "",
+          returnSleep: "",
+          nightmare: "",
+          riseStatus: "",
+          riseTime: ""
+        };
+      }
+
+      function loadRecords() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) return [];
+          const parsed = JSON.parse(saved);
+          const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
+          return source.map(normalizeRecord);
+        } catch {
+          return [];
+        }
+      }
+
+      function saveRecords() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      }
+
+      function currentRecord() {
+        return records.find((record) => record.date === selectedDate) || emptyRecord(selectedDate);
+      }
+
+      function upsertRecord(nextRecord) {
+        const normalized = normalizeRecord({ ...nextRecord, updatedAt: new Date().toISOString() });
+        const index = records.findIndex((record) => record.date === normalized.date);
+        records = index >= 0
+          ? records.map((record, currentIndex) => currentIndex === index ? normalized : record)
+          : [...records, normalized];
+        records.sort((a, b) => a.date.localeCompare(b.date));
+        saveRecords();
+      }
+
+      function monthDates(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const count = new Date(year, month + 1, 0).getDate();
+        return Array.from({ length: count }, (_, index) => {
+          const day = index + 1;
+          return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        });
+      }
+
+      function formatDate(value) {
+        const date = new Date(`${value}T00:00:00`);
+        const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+        return `${date.getMonth() + 1}/${date.getDate()}（${weekday}）`;
+      }
+
+      function minutesFromTime(value) {
+        const [hours, minutes] = value.split(":").map(Number);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+        return hours * 60 + minutes;
+      }
+
+      function sleepMinutes(record) {
+        if (!record || record.sleepStatus !== "眠れた") return null;
+        const start = minutesFromTime(record.fellAsleepTime);
+        const end = minutesFromTime(record.wakeTime);
+        if (start === null || end === null) return null;
+        return end >= start ? end - start : end + 24 * 60 - start;
+      }
+
+      function sleepLabel(record) {
+        if (!record || !record.sleepStatus) return "未記録";
+        if (record.sleepStatus === "眠れない") return "眠れない";
+        const minutes = sleepMinutes(record);
+        if (minutes === null) return "未記録";
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return `${hours}時間${rest ? `${rest}分` : ""}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+
+      function field(label, body) {
+        return `<section class="field"><h3>${label}</h3>${body}</section>`;
+      }
+
+      function choices(fieldName, values, selected) {
+        return `
+          <div class="choices">
+            ${values.map((value) => `
+              <button class="choice ${selected === value ? "active" : ""}" data-field="${fieldName}" data-value="${value}">
+                ${escapeHtml(value)}
+              </button>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderForm(record) {
+        const sleepFields = record.sleepStatus === "眠れた" ? `
+          ${field("眠れた時刻（だいたいで大丈夫）", `<input type="time" data-field="fellAsleepTime" value="${record.fellAsleepTime}">`)}
+          ${field("起床時刻", `<input type="time" data-field="wakeTime" value="${record.wakeTime}">`)}
+          ${field("途中覚醒", choices("nightWaking", ["なし", "あり"], record.nightWaking))}
+          ${record.nightWaking === "あり" ? `
+            ${field("途中覚醒回数", choices("wakeCount", ["1回", "複数回"], record.wakeCount))}
+            ${field("再入眠", choices("returnSleep", ["できた", "できない", "両方"], record.returnSleep))}
+          ` : ""}
+          ${field("悪夢", choices("nightmare", ["なし", "あり"], record.nightmare))}
+          ${field("起き上がり", choices("riseStatus", ["すぐ起きられた", "起きられない"], record.riseStatus))}
+          ${record.riseStatus === "起きられない" ? field("起き上がり時刻（余裕があれば）", `<input type="time" data-field="riseTime" value="${record.riseTime}">`) : ""}
+          <div class="sleep-result">睡眠時間：${sleepLabel(record)}</div>
+        ` : `
+          <div class="sleep-result">睡眠時間：${sleepLabel(record)}</div>
+        `;
+
+        return `
+          <section class="panel form-panel">
+            ${field("日付", `<input type="date" data-field="date" value="${record.date}">`)}
+            ${field("ベッドに入った時刻", `<input type="time" data-field="bedTime" value="${record.bedTime}">`)}
+            ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
+            ${sleepFields}
+            ${field("眠剤", `<input type="text" data-field="medicine" value="${escapeHtml(record.medicine)}" placeholder="例：2錠">`)}
+            ${field("メモ", `<textarea data-field="memo" rows="3" placeholder="短く残す">${escapeHtml(record.memo)}</textarea>`)}
+            <button class="primary" data-action="finish">記録する</button>
+            ${message ? `<p class="success">${message}</p>` : ""}
+          </section>
+        `;
+      }
+
+      function recordsInMonth() {
+        const byDate = new Map(records.map((record) => [record.date, record]));
+        return monthDates(monthCursor).map((date) => ({ date, record: byDate.get(date) }));
+      }
+
+      function filteredCards() {
+        return recordsInMonth().filter(({ record }) => {
+          if (filterMode === "all") return true;
+          if (!record) return false;
+          if (filterMode === "sleepless") return record.sleepStatus === "眠れない";
+          if (filterMode === "nightmare") return record.nightmare === "あり";
+          return record.nightWaking === "あり";
+        });
+      }
+
+      function renderSummary() {
+        const all = recordsInMonth().map((item) => item.record).filter(Boolean);
+        const durations = all.map(sleepMinutes).filter((value) => value !== null);
+        const averageMinutes = durations.length
+          ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
+          : null;
+        const average = averageMinutes === null
+          ? "未記録"
+          : `${Math.floor(averageMinutes / 60)}時間${averageMinutes % 60 ? `${averageMinutes % 60}分` : ""}`;
+
+        return `
+          <section class="summary">
+            <p>記録日数：${all.length}日/${monthDates(monthCursor).length}日　合計${all.length}回</p>
+            <p>平均睡眠時間：${average}</p>
+            <p>眠れない記録：${all.filter((record) => record.sleepStatus === "眠れない").length}件</p>
+            <p>途中覚醒あり：${all.filter((record) => record.nightWaking === "あり").length}件</p>
+            <p>悪夢あり：${all.filter((record) => record.nightmare === "あり").length}件</p>
+            <p>眠剤記録あり：${all.filter((record) => record.medicine.trim()).length}件</p>
+          </section>
+        `;
+      }
+
+      function renderCard(date, record) {
+        if (!record) {
+          return `
+            <article class="record-card empty">
+              <h3>${formatDate(date)}</h3>
+              <p>未記録</p>
+            </article>
+          `;
+        }
+
+        if (record.sleepStatus === "眠れない") {
+          return `
+            <article class="record-card sleepless">
+              <h3>${formatDate(record.date)}</h3>
+              <dl>
+                ${record.bedTime ? `<div><dt>ベッド</dt><dd>${record.bedTime}</dd></div>` : ""}
+                <div><dt>睡眠</dt><dd>眠れない</dd></div>
+                ${record.medicine ? `<div><dt>眠剤</dt><dd>${escapeHtml(record.medicine)}</dd></div>` : ""}
+              </dl>
+              ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
+            </article>
+          `;
+        }
+
+        return `
+          <article class="record-card">
+            <h3>${formatDate(record.date)}</h3>
+            <div class="card-block">
+              <h4>時刻</h4>
+              <dl>
+                ${record.bedTime ? `<div><dt>ベッド</dt><dd>${record.bedTime}</dd></div>` : ""}
+                <div><dt>睡眠</dt><dd>${record.sleepStatus || "未記録"}</dd></div>
+                ${record.sleepStatus === "眠れた" && record.fellAsleepTime ? `<div><dt>入眠</dt><dd>${record.fellAsleepTime}</dd></div>` : ""}
+                ${record.sleepStatus === "眠れた" && record.wakeTime ? `<div><dt>起床</dt><dd>${record.wakeTime}</dd></div>` : ""}
+                ${record.riseTime ? `<div><dt>起き上がり時刻</dt><dd>${record.riseTime}</dd></div>` : ""}
+              </dl>
+            </div>
+            ${record.sleepStatus === "眠れた" ? `
+              <div class="card-block">
+                <h4>状態</h4>
+                <dl>
+                  <div><dt>覚醒</dt><dd>${record.nightWaking || "未記録"}</dd></div>
+                  <div><dt>回数</dt><dd>${record.nightWaking === "あり" ? record.wakeCount || "未記録" : "未記録"}</dd></div>
+                  <div><dt>再入眠</dt><dd>${record.nightWaking === "あり" ? record.returnSleep || "未記録" : "未記録"}</dd></div>
+                  <div><dt>悪夢</dt><dd>${record.nightmare || "未記録"}</dd></div>
+                  <div><dt>起き上がり</dt><dd>${record.riseStatus || "未記録"}</dd></div>
+                </dl>
+              </div>
+            ` : ""}
+            <div class="card-block">
+              <h4>まとめ</h4>
+              <dl>
+                <div><dt>睡眠</dt><dd>${sleepLabel(record)}</dd></div>
+                <div><dt>眠剤</dt><dd>${record.medicine || "未記録"}</dd></div>
+              </dl>
+            </div>
+            ${record.memo ? `<p class="memo">${escapeHtml(record.memo)}</p>` : ""}
+          </article>
+        `;
+      }
+
+      function renderCards() {
+        return filteredCards().map(({ date, record }) => renderCard(date, record)).join("");
+      }
+
+      function renderBackup() {
+        return `
+          <section class="panel backup-panel">
+            <button class="secondary" data-action="export">JSONバックアップを書き出す</button>
+            <label class="secondary file-button">
+              JSONバックアップを読み込む
+              <input type="file" accept="application/json" data-action="import">
+            </label>
+          </section>
+        `;
+      }
+
+      function render() {
+        const record = currentRecord();
+        app.innerHTML = `
+          <main class="app-shell">
+            <header class="header">
+              <p>30秒で記録できます</p>
+              <h1>ねむりメモ</h1>
+            </header>
+            ${renderForm(record)}
+            <section class="panel month-panel">
+              <div class="month-head">
+                <button class="secondary" data-action="prevMonth">前の月</button>
+                <h2>${monthCursor.getFullYear()}年${monthCursor.getMonth() + 1}月</h2>
+                <button class="secondary" data-action="nextMonth">次の月</button>
+              </div>
+              ${renderSummary()}
+              <div class="filters">
+                <button class="filter ${filterMode === "all" ? "active" : ""}" data-filter="all">すべて</button>
+                <button class="filter ${filterMode === "sleepless" ? "active" : ""}" data-filter="sleepless">眠れないだけ</button>
+                <button class="filter ${filterMode === "nightmare" ? "active" : ""}" data-filter="nightmare">悪夢ありだけ</button>
+                <button class="filter ${filterMode === "waking" ? "active" : ""}" data-filter="waking">途中覚醒ありだけ</button>
+              </div>
+              <div class="cards">${renderCards()}</div>
+            </section>
+            ${renderBackup()}
+          </main>
+        `;
+      }
+
+      function updateField(fieldName, value) {
+        const record = currentRecord();
+        const next = { ...record, [fieldName]: value };
+
+        if (fieldName === "date") {
+          selectedDate = value || today();
+          next.date = selectedDate;
+        }
+
+        if (fieldName === "sleepStatus" && value === "眠れない") {
+          upsertRecord(clearSleepDetails({ ...next, sleepStatus: "眠れない" }));
+        } else if (fieldName === "nightWaking" && value === "なし") {
+          upsertRecord({ ...next, nightWaking: "なし", wakeCount: "", returnSleep: "" });
+        } else if (fieldName === "riseStatus" && value === "すぐ起きられた") {
+          upsertRecord({ ...next, riseStatus: "すぐ起きられた", riseTime: "" });
+        } else {
+          upsertRecord(next);
+        }
+
+        message = "";
+        render();
+      }
+
+      app.addEventListener("input", (event) => {
+        const fieldName = event.target.dataset.field;
+        if (!fieldName) return;
+        updateField(fieldName, event.target.value);
+      });
+
+      app.addEventListener("click", (event) => {
+        const target = event.target;
+        const fieldName = target.dataset.field;
+        const value = target.dataset.value;
+        const action = target.dataset.action;
+        const filter = target.dataset.filter;
+
+        if (fieldName && value !== undefined) updateField(fieldName, value);
+
+        if (filter) {
+          filterMode = filter;
+          render();
+        }
+
+        if (action === "finish") {
+          message = "記録できました";
+          render();
+        }
+
+        if (action === "prevMonth") {
+          monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1);
+          render();
+        }
+
+        if (action === "nextMonth") {
+          monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1);
+          render();
+        }
+
+        if (action === "export") {
+          const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `nemuri-memo-${today()}.json`;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
+      });
+
+      app.addEventListener("change", (event) => {
+        if (event.target.dataset.action !== "import") return;
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result));
+            const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
+            records = source.map(normalizeRecord);
+            saveRecords();
+            message = "記録できました";
+            render();
+          } catch {
+            alert("JSONを読み込めませんでした");
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      render();
+    </script>
+  </body>
+</html>
