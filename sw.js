@@ -3,7 +3,13 @@ const CACHE_FILES = ["./", "./index.html", "./manifest.json", "./sw.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_FILES))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        CACHE_FILES.map((url) =>
+          fetch(url, { cache: "reload" }).then((response) => cache.put(url, response))
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -20,13 +26,18 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const request = event.request;
+  const isPage = request.mode === "navigate" || request.destination === "document";
+
   event.respondWith(
-    fetch(event.request)
+    fetch(request, isPage ? { cache: "reload" } : undefined)
       .then((response) => {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+      .catch(() =>
+        caches.match(request).then((cached) => cached || caches.match("./index.html"))
+      )
   );
 });
