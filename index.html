@@ -254,6 +254,13 @@
         font-weight: 800;
       }
 
+      .backup-note {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.7;
+      }
+
       .month-head {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
@@ -810,6 +817,7 @@
       function renderBackup() {
         return `
           <section class="panel backup-panel">
+            <p class="backup-note">大切な記録が残るように、<br>ときどきバックアップしておくと安心です。</p>
             <button class="secondary" data-action="export">JSONバックアップを書き出す</button>
             <label class="secondary file-button">
               JSONバックアップを読み込む
