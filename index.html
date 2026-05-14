@@ -250,7 +250,7 @@
       .record-card {
         scroll-margin-top: 14px;
         display: grid;
-        gap: 12px;
+        gap: 14px;
         padding: 14px;
         background: rgba(255, 250, 241, 0.92);
       }
@@ -270,7 +270,7 @@
 
       .record-head {
         display: grid;
-        gap: 10px;
+        gap: 4px;
       }
 
       .record-head h3 {
@@ -278,14 +278,24 @@
       }
 
       .card-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        justify-content: flex-end;
         gap: 8px;
+      }
+
+      .card-action {
+        width: auto;
+        min-height: 36px;
+        padding: 0 14px;
+        border-color: rgba(155, 116, 107, 0.22);
+        background: rgba(255, 250, 241, 0.66);
+        color: var(--primary-dark);
+        font-size: 14px;
       }
 
       dl {
         display: grid;
-        gap: 7px;
+        gap: 9px;
         margin: 0;
       }
 
@@ -309,12 +319,14 @@
         overflow-wrap: anywhere;
       }
 
-      .memo {
-        border-left: 4px solid var(--warm);
-        padding-left: 10px;
-        line-height: 1.7;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
+      .card-groups {
+        display: grid;
+        gap: 16px;
+      }
+
+      .card-group {
+        display: grid;
+        gap: 9px;
       }
 
       @media (max-width: 380px) {
@@ -586,6 +598,11 @@
         return `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
       }
 
+      function groupRows(rows) {
+        const html = rows.filter(Boolean).join("");
+        return html ? `<dl class="card-group">${html}</dl>` : "";
+      }
+
       function choices(fieldName, values, selected) {
         return `
           <div class="choices">
@@ -688,28 +705,37 @@
           `;
         }
 
-        const rows = [
+        const isSleepless = record.sleepStatus === "眠れない";
+        const flowRows = [
           row("ベッド", record.bedTime),
-          row("睡眠", record.sleepStatus),
-          record.sleepStatus === "眠れた" ? row("入眠", record.fellAsleepTime) : "",
-          record.sleepStatus === "眠れた" ? row("起床", record.wakeTime) : "",
-          record.sleepStatus === "眠れた" ? row("途中覚醒", record.nightWaking) : "",
-          record.sleepStatus === "眠れた" ? row("悪夢", record.nightmare) : "",
-          record.sleepStatus === "眠れた" ? row("起き上がり", record.riseStatus) : "",
+          isSleepless ? row("睡眠", "眠れない") : "",
+          !isSleepless ? row("入眠", record.fellAsleepTime) : "",
+          !isSleepless ? row("起床", record.wakeTime) : ""
+        ];
+        const stateRows = isSleepless ? [] : [
+          row("途中覚醒", record.nightWaking),
+          row("悪夢", record.nightmare),
+          row("起き上がり", record.riseStatus)
+        ];
+        const supportRows = [
           row("眠剤", record.medicine ? `${record.medicine}錠` : ""),
           record.memo ? `<div><dt>メモ</dt><dd>${escapeHtml(record.memo)}</dd></div>` : ""
-        ].filter(Boolean).join("");
+        ];
 
         return `
-          <article class="record-card ${record.sleepStatus === "眠れない" ? "sleepless" : ""} ${todayClass}" id="card-${record.date}">
+          <article class="record-card ${isSleepless ? "sleepless" : ""} ${todayClass}" id="card-${record.date}">
             <div class="record-head">
               <h3>${formatDate(record.date)}</h3>
-              <div class="card-actions">
-                <button class="card-action" data-action="edit" data-date="${record.date}">編集</button>
-                <button class="card-action danger" data-action="delete" data-date="${record.date}">削除</button>
-              </div>
             </div>
-            <dl>${rows}</dl>
+            <div class="card-groups">
+              ${groupRows(flowRows)}
+              ${groupRows(stateRows)}
+              ${groupRows(supportRows)}
+            </div>
+            <div class="card-actions">
+              <button class="card-action" data-action="edit" data-date="${record.date}">編集</button>
+              <button class="card-action danger" data-action="delete" data-date="${record.date}">削除</button>
+            </div>
           </article>
         `;
       }
