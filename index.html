@@ -741,7 +741,8 @@
         ] : [
           row("ベッド", record.bedTime),
           row("入眠", record.fellAsleepTime),
-          row("起床", record.wakeTime)
+          row("起床", record.wakeTime),
+          sleepMinutes(record) !== null ? row("睡眠時間", sleepLabel(record)) : ""
         ];
         const stateRows = isSleepless ? [] : [
           row("途中覚醒", record.nightWaking),
