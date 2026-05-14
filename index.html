@@ -768,6 +768,7 @@
               <h1>ねむりメモ</h1>
             </header>
             ${renderForm(record)}
+            ${renderBackup()}
             <section class="panel month-panel">
               <div class="month-head">
                 <button class="secondary" data-action="prevMonth">前の月</button>
@@ -784,7 +785,6 @@
               </div>
               <div class="cards">${renderCards()}</div>
             </section>
-            ${renderBackup()}
           </main>
         `;
       }
