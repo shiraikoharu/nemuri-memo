@@ -166,6 +166,29 @@
         gap: 10px;
       }
 
+      .time-control {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .time-control input {
+        min-width: 0;
+      }
+
+      .time-reset {
+        min-height: 52px;
+        border: 1px solid rgba(198, 154, 162, 0.28);
+        border-radius: 8px;
+        background: var(--accent-soft);
+        color: var(--primary-dark);
+        font-size: 14px;
+        font-weight: 800;
+        padding: 0 12px;
+        white-space: nowrap;
+      }
+
       .filter-panel {
         position: relative;
         display: grid;
@@ -392,6 +415,7 @@
 
       let records = loadRecords();
       let selectedDate = openedDate;
+      let draftRecord = emptyRecord(openedDate);
       let monthCursor = new Date();
       let filterMode = "all";
       let filterOpen = false;
@@ -541,7 +565,18 @@
       }
 
       function currentRecord() {
-        return records.find((record) => record.date === selectedDate) || emptyRecord(selectedDate);
+        return draftRecord;
+      }
+
+      function resetForm() {
+        selectedDate = openedDate;
+        draftRecord = emptyRecord(openedDate);
+      }
+
+      function loadDraft(date) {
+        selectedDate = date || openedDate;
+        const saved = records.find((record) => record.date === selectedDate);
+        draftRecord = saved ? normalizeRecord(saved) : emptyRecord(selectedDate);
       }
 
       function upsertRecord(nextRecord) {
@@ -665,11 +700,20 @@
         `;
       }
 
+      function timeInput(fieldName, value) {
+        return `
+          <div class="time-control">
+            <input type="time" data-field="${fieldName}" value="${escapeHtml(value)}">
+            <button class="time-reset" type="button" data-action="resetTime" data-field="${fieldName}">リセット</button>
+          </div>
+        `;
+      }
+
       function renderForm(record) {
-        const showSleepDetails = record.sleepStatus !== "眠れない";
+        const showSleepDetails = record.sleepStatus === "眠れた";
         const sleepFields = showSleepDetails ? `
-          ${field("眠れた時刻（だいたいで大丈夫）", `<input type="time" data-field="fellAsleepTime" value="${record.fellAsleepTime}">`)}
-          ${field("起床時刻", `<input type="time" data-field="wakeTime" value="${record.wakeTime}">`)}
+          ${field("眠れた時刻（だいたいで大丈夫）", timeInput("fellAsleepTime", record.fellAsleepTime))}
+          ${field("起床時刻", timeInput("wakeTime", record.wakeTime))}
           ${field("途中覚醒", choices("nightWaking", ["なし", "あり"], record.nightWaking))}
           ${field("悪夢", choices("nightmare", ["なし", "あり"], record.nightmare))}
           ${field("起き上がり", choices("riseStatus", ["すぐ起きられた", "起きられない"], record.riseStatus))}
@@ -679,7 +723,7 @@
         return `
           <section class="panel form-panel" id="form-panel">
             ${field("日付", `<input type="date" data-field="date" value="${record.date}">`)}
-            ${field("ベッドに入った時刻", `<input type="time" data-field="bedTime" value="${record.bedTime}">`)}
+            ${field("ベッドに入った時刻", timeInput("bedTime", record.bedTime))}
             ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
             ${sleepFields}
             ${field("眠剤", medicineSelect(record.medicine))}
@@ -852,22 +896,19 @@
       }
 
       function updateField(fieldName, value) {
-        const record = currentRecord();
-        const next = { ...record, [fieldName]: value };
+        let next = { ...currentRecord(), [fieldName]: value };
 
         if (fieldName === "date") {
-          selectedDate = value || today();
+          selectedDate = value || openedDate;
           next.date = selectedDate;
         }
 
         if (fieldName === "sleepStatus" && value === "眠れない") {
-          upsertRecord(clearSleepDetails({ ...next, sleepStatus: "眠れない" }));
-        } else {
-          upsertRecord(next);
+          next = clearSleepDetails({ ...next, sleepStatus: "眠れない" });
         }
 
+        draftRecord = normalizeRecord(next);
         message = "";
-        render();
       }
 
       function scrollToDate(date) {
@@ -907,6 +948,7 @@
             const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
             records = source.map(normalizeRecord);
             saveRecords();
+            resetForm();
             message = "記録できました";
             render();
           } catch {
@@ -924,7 +966,10 @@
         const filter = target.dataset.filter;
         const date = target.dataset.date;
 
-        if (fieldName && value !== undefined) updateField(fieldName, value);
+        if (fieldName && value !== undefined) {
+          updateField(fieldName, value);
+          render();
+        }
 
         if (filter) {
           filterMode = filter;
@@ -938,7 +983,15 @@
         }
 
         if (action === "finish") {
+          upsertRecord(draftRecord);
+          resetForm();
           message = "記録できました";
+          render();
+        }
+
+        if (action === "resetTime" && fieldName) {
+          updateField(fieldName, "");
+          if (records.some((record) => record.date === draftRecord.date)) upsertRecord(draftRecord);
           render();
         }
 
@@ -961,7 +1014,7 @@
         }
 
         if (action === "edit" && date) {
-          selectedDate = date;
+          loadDraft(date);
           const editDate = new Date(`${date}T00:00:00`);
           monthCursor = new Date(editDate.getFullYear(), editDate.getMonth(), 1);
           message = "";
@@ -973,7 +1026,7 @@
           const ok = confirm(`${formatDate(date)}の記録を削除しますか？`);
           if (!ok) return;
           deleteRecord(date);
-          if (selectedDate === date) selectedDate = openedDate;
+          if (draftRecord.date === date) resetForm();
           message = "";
           render();
         }
