@@ -1,5 +1,5 @@
-const CACHE_NAME = "nemuri-memo-v4";
-const CACHE_FILES = ["./", "./index.html", "./manifest.json", "./sw.js"];
+const CACHE_NAME = "nemuri-memo-v5";
+const CACHE_FILES = ["./", "./index.html", "./manifest.json", "./sw.js", "./icon.png"];
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
