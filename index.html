@@ -327,6 +327,22 @@
         color: var(--muted);
       }
 
+      .record-card.empty-action {
+        cursor: pointer;
+        border-color: rgba(198, 154, 162, 0.2);
+      }
+
+      .record-card.empty-action:active {
+        background: rgba(248, 231, 234, 0.78);
+        transform: translateY(1px);
+      }
+
+      .empty-hint {
+        color: var(--primary-dark);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
       .record-head {
         display: grid;
         gap: 4px;
@@ -777,11 +793,12 @@
         const todayClass = date === openedDate ? "today" : "";
         if (!record) {
           return `
-            <article class="record-card empty ${todayClass}" id="card-${date}">
+            <article class="record-card empty empty-action ${todayClass}" id="card-${date}" data-action="newRecord" data-date="${date}">
               <div class="record-head">
                 <h3>${formatDate(date)}</h3>
               </div>
               <p>未記録</p>
+              <p class="empty-hint">タップして記録</p>
             </article>
           `;
         }
@@ -960,7 +977,8 @@
       });
 
       app.addEventListener("click", (event) => {
-        const target = event.target;
+        const target = event.target.closest("[data-action], [data-filter], [data-field]");
+        if (!target) return;
         const fieldName = target.dataset.field;
         const value = target.dataset.value;
         const action = target.dataset.action;
@@ -1012,6 +1030,13 @@
           filterMode = "all";
           render();
           scrollToDate(openedDate);
+        }
+
+        if (action === "newRecord" && date) {
+          loadDraft(date);
+          message = "";
+          render();
+          scrollToForm();
         }
 
         if (action === "edit" && date) {
