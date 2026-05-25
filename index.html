@@ -358,6 +358,21 @@
         gap: 8px;
       }
 
+      .record-entries {
+        display: grid;
+        gap: 14px;
+      }
+
+      .record-entry {
+        display: grid;
+        gap: 12px;
+      }
+
+      .record-entry.with-separator {
+        border-top: 1px dashed rgba(159, 116, 125, 0.24);
+        padding-top: 14px;
+      }
+
       .card-action {
         width: auto;
         min-height: 36px;
@@ -434,6 +449,7 @@
       let records = loadRecords();
       let selectedDate = openedDate;
       let draftRecord = emptyRecord(openedDate);
+      let editingId = "";
       let monthCursor = new Date();
       let filterMode = "all";
       let filterOpen = false;
@@ -448,7 +464,7 @@
         });
 
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js?v=4").then((registration) => {
+          navigator.serviceWorker.register("./sw.js?v=8").then((registration) => {
             registration.update();
             if (registration.waiting) {
               registration.waiting.postMessage({ type: "SKIP_WAITING" });
@@ -492,6 +508,7 @@
           riseTime: "",
           medicine: "",
           memo: "",
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
       }
@@ -525,11 +542,12 @@
         return Number.isFinite(number) ? number : null;
       }
 
-      function normalizeRecord(raw) {
+      function normalizeRecord(raw, index = 0) {
         const fellAsleepTime = text(raw.fellAsleepTime || raw.fellAsleepAt || raw.sleepTime);
         const wakeTime = text(raw.wakeTime || raw.wokeUpAt);
         const inferredStatus = fellAsleepTime || wakeTime ? "眠れた" : "";
         const sleepStatus = oneOf(raw.sleepStatus, ["眠れた", "眠れない"]) || inferredStatus;
+        const now = new Date(Date.now() + index).toISOString();
 
         const record = {
           ...emptyRecord(text(raw.date || raw.record_date) || today()),
@@ -546,7 +564,8 @@
           riseTime: text(raw.riseTime),
           medicine: normalizeMedicine(raw.medicine),
           memo: text(raw.memo),
-          updatedAt: text(raw.updatedAt) || new Date().toISOString()
+          createdAt: text(raw.createdAt) || text(raw.updatedAt) || now,
+          updatedAt: text(raw.updatedAt) || now
         };
 
         return record.sleepStatus === "眠れない" ? clearSleepDetails(record) : record;
@@ -572,7 +591,7 @@
           if (!saved) return [];
           const parsed = JSON.parse(saved);
           const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
-          return source.map(normalizeRecord);
+          return source.map(normalizeRecord).sort(compareRecords);
         } catch {
           return [];
         }
@@ -589,26 +608,55 @@
       function resetForm() {
         selectedDate = openedDate;
         draftRecord = emptyRecord(openedDate);
+        editingId = "";
       }
 
       function loadDraft(date) {
         selectedDate = date || openedDate;
-        const saved = records.find((record) => record.date === selectedDate);
-        draftRecord = saved ? normalizeRecord(saved) : emptyRecord(selectedDate);
+        draftRecord = emptyRecord(selectedDate);
+        editingId = "";
+      }
+
+      function loadDraftById(id) {
+        const saved = records.find((record) => record.id === id);
+        if (!saved) return false;
+        selectedDate = saved.date;
+        draftRecord = normalizeRecord(saved);
+        editingId = saved.id;
+        return true;
+      }
+
+      function compareRecords(a, b) {
+        return a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
       }
 
       function upsertRecord(nextRecord) {
-        const normalized = normalizeRecord({ ...nextRecord, updatedAt: new Date().toISOString() });
-        const index = records.findIndex((record) => record.date === normalized.date);
+        const now = new Date().toISOString();
+        const existing = records.find((record) => record.id === nextRecord.id);
+        const normalized = normalizeRecord({
+          ...nextRecord,
+          id: existing ? existing.id : text(nextRecord.id) || uid(),
+          createdAt: existing ? existing.createdAt : text(nextRecord.createdAt) || now,
+          updatedAt: now
+        });
+        const index = records.findIndex((record) => record.id === normalized.id);
         records = index >= 0
           ? records.map((record, currentIndex) => currentIndex === index ? normalized : record)
           : [...records, normalized];
-        records.sort((a, b) => a.date.localeCompare(b.date));
+        records.sort(compareRecords);
         saveRecords();
       }
 
-      function deleteRecord(date) {
-        records = records.filter((record) => record.date !== date);
+      function saveDraftRecord() {
+        const now = new Date().toISOString();
+        const next = editingId
+          ? { ...draftRecord, id: editingId }
+          : { ...draftRecord, id: uid(), createdAt: now };
+        upsertRecord(next);
+      }
+
+      function deleteRecord(id) {
+        records = records.filter((record) => record.id !== id);
         saveRecords();
       }
 
@@ -753,22 +801,33 @@
       }
 
       function recordsInMonth() {
-        const byDate = new Map(records.map((record) => [record.date, record]));
-        return monthDates(monthCursor).map((date) => ({ date, record: byDate.get(date) }));
+        const byDate = new Map();
+        records.forEach((record) => {
+          if (!byDate.has(record.date)) byDate.set(record.date, []);
+          byDate.get(record.date).push(record);
+        });
+        return monthDates(monthCursor).map((date) => ({
+          date,
+          records: (byDate.get(date) || []).slice().sort(compareRecords)
+        }));
       }
 
       function filteredCards() {
-        return recordsInMonth().filter(({ record }) => {
-          if (filterMode === "all") return true;
-          if (!record) return false;
-          if (filterMode === "sleepless") return record.sleepStatus === "眠れない";
-          if (filterMode === "nightmare") return record.nightmare === "あり";
-          return record.nightWaking === "あり";
-        });
+        return recordsInMonth().map(({ date, records }) => {
+          if (filterMode === "all") return { date, records };
+          const filtered = records.filter((record) => {
+            if (filterMode === "sleepless") return record.sleepStatus === "眠れない";
+            if (filterMode === "nightmare") return record.nightmare === "あり";
+            return record.nightWaking === "あり";
+          });
+          return filtered.length ? { date, records: filtered } : null;
+        }).filter(Boolean);
       }
 
       function renderSummary() {
-        const all = recordsInMonth().map((item) => item.record).filter(Boolean);
+        const monthItems = recordsInMonth();
+        const all = monthItems.flatMap((item) => item.records);
+        const recordedDays = monthItems.filter((item) => item.records.length > 0).length;
         const sleepDurations = all.map(averageSleepMinutes).filter((value) => value !== null && Number.isFinite(value));
         const averageSleep = sleepDurations.length
           ? minutesLabel(Math.round(sleepDurations.reduce((sum, value) => sum + value, 0) / sleepDurations.length))
@@ -780,9 +839,9 @@
 
         return `
           <section class="summary">
-            <p>記録日数：${all.length}日/${monthDates(monthCursor).length}日　合計${all.length}回</p>
+            <p>記録日数：${recordedDays}日/${monthDates(monthCursor).length}日　合計${all.length}回</p>
             <p>平均睡眠時間：${averageSleep}</p>
-            <p>眠れない日：${all.filter((record) => record.sleepStatus === "眠れない").length}件</p>
+            <p>眠れない記録：${all.filter((record) => record.sleepStatus === "眠れない").length}件</p>
             <p>途中覚醒あり：${all.filter((record) => record.nightWaking === "あり").length}件</p>
             <p>悪夢あり：${all.filter((record) => record.nightmare === "あり").length}件</p>
             <p>平均眠剤錠数：${averageMedicine}</p>
@@ -790,20 +849,7 @@
         `;
       }
 
-      function renderCard(date, record) {
-        const todayClass = date === openedDate ? "today" : "";
-        if (!record) {
-          return `
-            <article class="record-card empty empty-action ${todayClass}" id="card-${date}" data-action="newRecord" data-date="${date}">
-              <div class="record-head">
-                <h3>${formatDate(date)}</h3>
-              </div>
-              <p>未記録</p>
-              <p class="empty-hint">タップして記録</p>
-            </article>
-          `;
-        }
-
+      function renderRecordEntry(record, index) {
         const isSleepless = record.sleepStatus === "眠れない";
         const flowRows = isSleepless ? [
           row("ベッド", record.bedTime),
@@ -825,25 +871,50 @@
         ];
 
         return `
-          <article class="record-card ${isSleepless ? "sleepless" : ""} ${todayClass}" id="card-${record.date}">
-            <div class="record-head">
-              <h3>${formatDate(record.date)}</h3>
-            </div>
+          <div class="record-entry ${index > 0 ? "with-separator" : ""}">
             <div class="card-groups">
               ${groupRows(flowRows)}
               ${groupRows(stateRows)}
               ${groupRows(supportRows)}
             </div>
             <div class="card-actions">
-              <button class="card-action" data-action="edit" data-date="${record.date}">編集</button>
-              <button class="card-action danger" data-action="delete" data-date="${record.date}">削除</button>
+              <button class="card-action" data-action="edit" data-id="${escapeHtml(record.id)}">編集</button>
+              <button class="card-action danger" data-action="delete" data-id="${escapeHtml(record.id)}">削除</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderCard(date, dayRecords) {
+        const todayClass = date === openedDate ? "today" : "";
+        if (!dayRecords.length) {
+          return `
+            <article class="record-card empty empty-action ${todayClass}" id="card-${date}" data-action="newRecord" data-date="${date}">
+              <div class="record-head">
+                <h3>${formatDate(date)}</h3>
+              </div>
+              <p>未記録</p>
+              <p class="empty-hint">タップして記録</p>
+            </article>
+          `;
+        }
+
+        const sleeplessClass = dayRecords.every((record) => record.sleepStatus === "眠れない") ? "sleepless" : "";
+
+        return `
+          <article class="record-card ${sleeplessClass} ${todayClass}" id="card-${date}">
+            <div class="record-head">
+              <h3>${formatDate(date)}</h3>
+            </div>
+            <div class="record-entries">
+              ${dayRecords.map(renderRecordEntry).join("")}
             </div>
           </article>
         `;
       }
 
       function renderCards() {
-        return filteredCards().map(({ date, record }) => renderCard(date, record)).join("");
+        return filteredCards().map(({ date, records }) => renderCard(date, records)).join("");
       }
 
       function filterLabel(mode) {
@@ -965,7 +1036,7 @@
           try {
             const parsed = JSON.parse(String(reader.result));
             const source = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : [];
-            records = source.map(normalizeRecord);
+            records = source.map(normalizeRecord).sort(compareRecords);
             saveRecords();
             resetForm();
             message = "記録できました";
@@ -985,6 +1056,7 @@
         const action = target.dataset.action;
         const filter = target.dataset.filter;
         const date = target.dataset.date;
+        const id = target.dataset.id;
 
         if (fieldName && value !== undefined) {
           const nextValue = CLEARABLE_CHOICE_FIELDS.includes(fieldName) && currentRecord()[fieldName] === value ? "" : value;
@@ -1004,7 +1076,7 @@
         }
 
         if (action === "finish") {
-          upsertRecord(draftRecord);
+          saveDraftRecord();
           resetForm();
           message = "記録できました";
           render();
@@ -1012,7 +1084,7 @@
 
         if (action === "resetTime" && fieldName) {
           updateField(fieldName, "");
-          if (records.some((record) => record.date === draftRecord.date)) upsertRecord(draftRecord);
+          if (editingId) upsertRecord(draftRecord);
           render();
         }
 
@@ -1041,20 +1113,23 @@
           scrollToForm();
         }
 
-        if (action === "edit" && date) {
-          loadDraft(date);
-          const editDate = new Date(`${date}T00:00:00`);
+        if (action === "edit" && id) {
+          const loaded = loadDraftById(id);
+          if (!loaded) return;
+          const editDate = new Date(`${draftRecord.date}T00:00:00`);
           monthCursor = new Date(editDate.getFullYear(), editDate.getMonth(), 1);
           message = "";
           render();
           scrollToForm();
         }
 
-        if (action === "delete" && date) {
-          const ok = confirm(`${formatDate(date)}の記録を削除しますか？`);
+        if (action === "delete" && id) {
+          const targetRecord = records.find((record) => record.id === id);
+          if (!targetRecord) return;
+          const ok = confirm(`${formatDate(targetRecord.date)}の記録を削除しますか？`);
           if (!ok) return;
-          deleteRecord(date);
-          if (draftRecord.date === date) resetForm();
+          deleteRecord(id);
+          if (editingId === id) resetForm();
           message = "";
           render();
         }
