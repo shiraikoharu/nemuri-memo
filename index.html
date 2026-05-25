@@ -880,10 +880,10 @@
       function renderBackup() {
         return `
           <section class="panel backup-panel">
-            <p class="backup-note">大切な記録が残るように、<br>ときどきバックアップしておくと安心です。</p>
-            <button class="secondary" data-action="export">JSONバックアップを書き出す</button>
+            <p class="backup-note">記録を保存したり復元できます。<br>大切な記録が残るように、ときどき保存しておくと安心です。</p>
+            <button class="secondary" data-action="export">記録を保存</button>
             <label class="secondary file-button">
-              JSONバックアップを読み込む
+              記録を復元
               <input type="file" accept="application/json" data-action="import">
             </label>
           </section>
@@ -971,7 +971,7 @@
             message = "記録できました";
             render();
           } catch {
-            alert("JSONを読み込めませんでした");
+            alert("ファイルを復元できませんでした");
           }
         };
         reader.readAsText(file);

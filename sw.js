@@ -1,4 +1,4 @@
-const CACHE_NAME = "nemuri-memo-v6";
+const CACHE_NAME = "nemuri-memo-v7";
 const CACHE_FILES = ["./", "./index.html", "./manifest.json", "./sw.js", "./icon.png"];
 
 self.addEventListener("message", (event) => {
