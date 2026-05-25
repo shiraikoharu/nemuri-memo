@@ -38,6 +38,7 @@
         min-height: 100%;
         margin: 0;
         overflow-x: hidden;
+        touch-action: manipulation;
       }
 
       body {
@@ -52,10 +53,12 @@
       textarea {
         max-width: 100%;
         font: inherit;
+        font-size: max(16px, 1em);
       }
 
       button {
         cursor: pointer;
+        touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -79,6 +82,7 @@
         min-height: 100dvh;
         margin: 0 auto;
         padding: calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+        touch-action: manipulation;
         background:
           radial-gradient(circle at 18% 0%, rgba(248, 224, 230, 0.78), transparent 34%),
           linear-gradient(180deg, #fff7f8 0%, #fbf3f1 52%, #fffaf6 100%);
@@ -184,7 +188,7 @@
         border-radius: 8px;
         background: var(--accent-soft);
         color: var(--primary-dark);
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 800;
         padding: 0 12px;
         white-space: nowrap;
@@ -219,6 +223,7 @@
       .primary,
       .secondary,
       .filter,
+      .filter-toggle,
       .file-button,
       .today-button,
       .card-action {
@@ -228,6 +233,8 @@
         background: var(--surface);
         color: var(--ink);
         font-weight: 800;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
       }
 
       .choice.active,
@@ -380,7 +387,7 @@
         border-color: rgba(198, 154, 162, 0.24);
         background: rgba(255, 250, 252, 0.82);
         color: var(--primary-dark);
-        font-size: 14px;
+        font-size: 16px;
       }
 
       dl {
@@ -442,7 +449,7 @@
       const STORAGE_KEYS = ["nemuriMemoRecords", "nemuri-memo-records", "sleepRecords", "records"];
       const STORAGE_KEY = STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null) || "nemuriMemoRecords";
       const MEDICINE_OPTIONS = ["", "0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5以上"];
-      const CLEARABLE_CHOICE_FIELDS = ["nightWaking", "nightmare", "riseStatus"];
+      const CLEARABLE_CHOICE_FIELDS = ["sleepStatus", "nightWaking", "nightmare", "riseStatus"];
       const app = document.querySelector("#app");
       const openedDate = today();
 
@@ -464,7 +471,7 @@
         });
 
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js?v=8").then((registration) => {
+          navigator.serviceWorker.register("./sw.js?v=11").then((registration) => {
             registration.update();
             if (registration.waiting) {
               registration.waiting.postMessage({ type: "SKIP_WAITING" });
@@ -740,12 +747,19 @@
         return html ? `<dl class="card-group">${html}</dl>` : "";
       }
 
+      function choiceLabel(fieldName, value, selected) {
+        if (fieldName === "sleepStatus" && value === "眠れた") {
+          return selected === "眠れた" ? "眠れた ▲" : "眠れた ▼";
+        }
+        return value;
+      }
+
       function choices(fieldName, values, selected) {
         return `
           <div class="choices">
             ${values.map((value) => `
               <button class="choice ${selected === value ? "active" : ""}" data-field="${fieldName}" data-value="${value}">
-                ${escapeHtml(value)}
+                ${escapeHtml(choiceLabel(fieldName, value, selected))}
               </button>
             `).join("")}
           </div>
@@ -993,8 +1007,12 @@
           next.date = selectedDate;
         }
 
-        if (fieldName === "sleepStatus" && value === "眠れない") {
-          next = clearSleepDetails({ ...next, sleepStatus: "眠れない" });
+        if (fieldName === "sleepStatus" && value !== "眠れた") {
+          next = clearSleepDetails({ ...next, sleepStatus: value });
+        }
+
+        if (fieldName === "nightWaking" && value !== "あり") {
+          next = { ...next, wakeCount: "", returnSleep: "" };
         }
 
         draftRecord = normalizeRecord(next);
