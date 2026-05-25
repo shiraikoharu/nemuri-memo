@@ -427,6 +427,7 @@
       const STORAGE_KEYS = ["nemuriMemoRecords", "nemuri-memo-records", "sleepRecords", "records"];
       const STORAGE_KEY = STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null) || "nemuriMemoRecords";
       const MEDICINE_OPTIONS = ["", "0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5以上"];
+      const CLEARABLE_CHOICE_FIELDS = ["nightWaking", "nightmare", "riseStatus"];
       const app = document.querySelector("#app");
       const openedDate = today();
 
@@ -986,7 +987,8 @@
         const date = target.dataset.date;
 
         if (fieldName && value !== undefined) {
-          updateField(fieldName, value);
+          const nextValue = CLEARABLE_CHOICE_FIELDS.includes(fieldName) && currentRecord()[fieldName] === value ? "" : value;
+          updateField(fieldName, nextValue);
           render();
         }
 
