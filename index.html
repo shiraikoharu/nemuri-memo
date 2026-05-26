@@ -292,6 +292,14 @@
         line-height: 1.7;
       }
 
+      .backup-title {
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.35;
+        text-align: left;
+      }
+
       .backup-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -368,6 +376,13 @@
 
       .record-head h3 {
         font-size: 22px;
+      }
+
+      .day-total {
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.45;
       }
 
       .card-actions {
@@ -734,6 +749,29 @@
         return `${hours}時間${rest ? `${rest}分` : ""}`;
       }
 
+      function dayFlowMinutes(record) {
+        const minutes = minutesFromTime(record.fellAsleepTime || record.sleepTime || record.bedTime);
+        if (minutes === null) return null;
+        return minutes < 12 * 60 ? minutes + 24 * 60 : minutes;
+      }
+
+      function compareDayRecords(a, b) {
+        const timeA = dayFlowMinutes(a);
+        const timeB = dayFlowMinutes(b);
+        if (timeA !== null && timeB !== null && timeA !== timeB) return timeA - timeB;
+        if (timeA !== null && timeB === null) return -1;
+        if (timeA === null && timeB !== null) return 1;
+        return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+      }
+
+      function totalSleepLabel(records) {
+        const total = records
+          .map(sleepMinutes)
+          .filter((minutes) => minutes !== null && Number.isFinite(minutes))
+          .reduce((sum, minutes) => sum + minutes, 0);
+        return total > 0 ? minutesLabel(total) : "";
+      }
+
       function escapeHtml(value) {
         return String(value).replace(/[&<>"']/g, (char) => ({
           "&": "&amp;",
@@ -833,7 +871,7 @@
         });
         return monthDates(monthCursor).map((date) => ({
           date,
-          records: (byDate.get(date) || []).slice().sort(compareRecords)
+          records: (byDate.get(date) || []).slice().sort(compareDayRecords)
         }));
       }
 
@@ -925,11 +963,13 @@
         }
 
         const sleeplessClass = dayRecords.every((record) => record.sleepStatus === "眠れない") ? "sleepless" : "";
+        const totalSleep = totalSleepLabel(dayRecords);
 
         return `
           <article class="record-card ${sleeplessClass} ${todayClass}" id="card-${date}">
             <div class="record-head">
               <h3>${formatDate(date)}</h3>
+              ${totalSleep ? `<p class="day-total">合計睡眠時間：${totalSleep}</p>` : ""}
             </div>
             <div class="record-entries">
               ${dayRecords.map(renderRecordEntry).join("")}
@@ -976,6 +1016,7 @@
       function renderBackup() {
         return `
           <section class="panel backup-panel">
+            <h2 class="backup-title">バックアップ</h2>
             <p class="backup-note">大切な記録が残るように、<br>ときどきバックアップしておくと安心です。</p>
             <div class="backup-actions">
               <button class="secondary" data-action="export">保存</button>
