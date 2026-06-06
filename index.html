@@ -93,6 +93,14 @@
         text-align: center;
       }
 
+      .header-description {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.65;
+      }
+
       h1,
       h2,
       h3,
@@ -497,7 +505,7 @@
         });
 
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js?v=11").then((registration) => {
+          navigator.serviceWorker.register("./sw.js?v=12").then((registration) => {
             registration.update();
             if (registration.waiting) {
               registration.waiting.postMessage({ type: "SKIP_WAITING" });
@@ -855,7 +863,7 @@
             ${field("ベッドに入った時刻", timeInput("bedTime", record.bedTime))}
             ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
             ${sleepFields}
-            ${field("眠剤", medicineSelect(record.medicine))}
+            ${field("睡眠薬の錠数（服用している場合）", medicineSelect(record.medicine))}
             ${field("メモ", `<textarea data-field="memo" rows="3">${escapeHtml(record.memo)}</textarea>`)}
             <button class="primary" data-action="finish">記録する</button>
             ${message ? `<p class="success">${message}</p>` : ""}
@@ -1017,7 +1025,7 @@
         return `
           <section class="panel backup-panel">
             <h2 class="backup-title">バックアップ</h2>
-            <p class="backup-note">大切な記録が残るように、<br>ときどきバックアップしておくと安心です。</p>
+            <p class="backup-note">記録を保存したり復元できます。<br>大切な記録がなくならないように、定期的に保存をお願いします。</p>
             <div class="backup-actions">
               <button class="secondary" data-action="export">保存</button>
               <label class="secondary file-button">
@@ -1035,6 +1043,7 @@
           <main class="app-shell">
             <header class="header">
               <h1>ねむりメモ</h1>
+              <p class="header-description">眠れた日も、眠れなかった日も、記入したい部分だけ記録できます。</p>
             </header>
             ${renderForm(record)}
             ${renderBackup()}
