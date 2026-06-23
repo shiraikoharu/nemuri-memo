@@ -1,4 +1,4 @@
-const CACHE_NAME = "nemuri-memo-v16";
+const CACHE_NAME = "nemuri-memo-v17";
 const CACHE_FILES = ["./", "./index.html", "./manifest.json", "./sw.js", "./icon.png"];
 
 self.addEventListener("message", (event) => {
@@ -37,6 +37,10 @@ self.addEventListener("activate", (event) => {
             })
           )
         )
+      )
+    ).then(() =>
+      self.clients.matchAll({ type: "window" }).then((clients) =>
+        Promise.all(clients.map((client) => client.navigate(client.url)))
       )
     )
   );
