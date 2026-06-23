@@ -483,7 +483,7 @@
       const STORAGE_KEYS = ["nemuriMemoRecords", "nemuri-memo-records", "sleepRecords", "records"];
       const STORAGE_KEY = STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null) || "nemuriMemoRecords";
       const MEDICINE_OPTIONS = ["", "0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5以上"];
-      const CLEARABLE_CHOICE_FIELDS = ["sleepStatus", "nightWaking", "nightmare", "riseStatus"];
+      const CLEARABLE_CHOICE_FIELDS = ["napStatus", "sleepStatus", "nightWaking", "nightmare", "riseStatus"];
       const app = document.querySelector("#app");
       const openedDate = today();
 
@@ -505,7 +505,7 @@
         });
 
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js?v=13").then((registration) => {
+          navigator.serviceWorker.register("./sw.js?v=14").then((registration) => {
             registration.update();
             if (registration.waiting) {
               registration.waiting.postMessage({ type: "SKIP_WAITING" });
@@ -538,6 +538,7 @@
           id: uid(),
           date,
           bedTime: "",
+          napStatus: "",
           sleepStatus: "",
           fellAsleepTime: "",
           wakeTime: "",
@@ -594,6 +595,7 @@
           ...emptyRecord(text(raw.date || raw.record_date) || today()),
           id: text(raw.id) || uid(),
           bedTime: text(raw.bedTime || raw.wentToBedAt || raw.went_to_bed_at),
+          napStatus: raw.napStatus === true ? "はい" : raw.napStatus === false ? "いいえ" : oneOf(raw.napStatus || raw.nap, ["はい", "いいえ"]),
           sleepStatus,
           fellAsleepTime,
           wakeTime,
@@ -860,8 +862,8 @@
         return `
           <section class="panel form-panel" id="form-panel">
             ${field("日付", `<input type="date" data-field="date" value="${record.date}">`)}
-            ${field("ベッドに入った時刻", timeInput("bedTime", record.bedTime))}
-            ${field("眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
+            ${field("昼寝した？", choices("napStatus", ["はい", "いいえ"], record.napStatus))}
+            ${field("夜眠れた？", choices("sleepStatus", ["眠れた", "眠れない"], record.sleepStatus))}
             ${sleepFields}
             ${field("睡眠薬の錠数（服用している場合）", medicineSelect(record.medicine))}
             ${field("メモ", `<textarea data-field="memo" rows="3">${escapeHtml(record.memo)}</textarea>`)}
@@ -923,9 +925,11 @@
       function renderRecordEntry(record, index) {
         const isSleepless = record.sleepStatus === "眠れない";
         const flowRows = isSleepless ? [
+          row("昼寝", record.napStatus),
           row("ベッド", record.bedTime),
           "<div><dt>睡眠</dt><dd>眠れない</dd></div>"
         ] : [
+          row("昼寝", record.napStatus),
           row("ベッド", record.bedTime),
           row("入眠", record.fellAsleepTime),
           row("起床", record.wakeTime),
